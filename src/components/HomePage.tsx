@@ -9,7 +9,7 @@ interface HomePageProps {
 }
 
 const SHOP_INFO = {
-  name: 'Bean & Brew',
+  name: 'mia.kape',
   neighborhood: 'Philippines',
   // Add the verified address and opening hours (for example, "Mo-Fr 08:00-17:00") before launch.
   streetAddress: '',
@@ -17,7 +17,15 @@ const SHOP_INFO = {
   region: '',
   postalCode: '',
   openingHours: [] as string[],
-  mapsSearch: 'Bean & Brew coffee Philippines',
+  mapsSearch: 'mia.kape coffee Philippines',
+};
+
+const MENU_PHOTOS: Record<string, string> = {
+  Espresso: '/images/espresoo.jpg',
+  Coffee: '/images/spec.jpg',
+  Specialty: '/images/latte.jpg',
+  Latte: '/images/espresoo.jpg',
+  'Cold Brew': '/images/coffee.jpg',
 };
 
 const HomePage: React.FC<HomePageProps> = ({ onOrder }) => {
@@ -70,9 +78,9 @@ const HomePage: React.FC<HomePageProps> = ({ onOrder }) => {
       <script type="application/ld+json">{JSON.stringify(businessSchema)}</script>
 
       <header className="home-header">
-        <a className="home-brand" href="#home" aria-label="Bean & Brew home">
+        <a className="home-brand" href="#home" aria-label="mia.kape home">
           <span className="home-brand-mark" aria-hidden="true"><Coffee size={20} /></span>
-          <span>bean <span className="home-brand-amp">&</span> brew</span>
+          <span>mia.kape</span>
         </a>
         <nav className="home-nav" aria-label="Main navigation">
           <a href="#menu">Our menu</a>
@@ -161,8 +169,8 @@ const HomePage: React.FC<HomePageProps> = ({ onOrder }) => {
                   <div className="home-menu-photo-wrap">
                     <img
                       className="home-menu-photo"
-                      src={coffee.image || '/images/coffee.jpg'}
-                      alt={coffee.name}
+                      src={MENU_PHOTOS[coffee.category] || '/images/coffee.jpg'}
+                      alt=""
                       loading="lazy"
                     />
                     <span className="home-menu-number">{String(index + 1).padStart(2, '0')}</span>
@@ -235,7 +243,7 @@ const HomePage: React.FC<HomePageProps> = ({ onOrder }) => {
               <span className="home-visit-icon"><MapPin size={19} aria-hidden="true" /></span>
               <div>
                 <h3>Find the shop</h3>
-                <p>{address || `Bean & Brew · ${SHOP_INFO.neighborhood}`}</p>
+                <p>{address || `mia.kape · ${SHOP_INFO.neighborhood}`}</p>
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(SHOP_INFO.mapsSearch)}`}
                   target="_blank"
@@ -272,7 +280,7 @@ const HomePage: React.FC<HomePageProps> = ({ onOrder }) => {
       <footer className="home-footer">
         <a className="home-brand home-footer-brand" href="#home">
           <span className="home-brand-mark" aria-hidden="true"><Coffee size={18} /></span>
-          <span>bean <span className="home-brand-amp">&</span> brew</span>
+          <span>mia.kape</span>
         </a>
         <p>Good coffee. Good company. See you soon.</p>
         <a href="#home" className="home-footer-top">Back to top ↑</a>

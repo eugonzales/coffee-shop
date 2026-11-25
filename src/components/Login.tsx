@@ -88,7 +88,7 @@ const Login: React.FC<LoginProps> = ({ onBack }) => {
             onClick={onBack}
             className="mb-5 text-amber-800 hover:text-amber-950 font-semibold transition-colors"
           >
-            ← Back to Bean & Brew
+            ← Back to mia.kape
           </button>
         )}
         {/* Header */}
@@ -99,7 +99,7 @@ const Login: React.FC<LoginProps> = ({ onBack }) => {
               <Sparkles className="h-6 w-6 text-yellow-500 absolute -top-2 -right-2 animate-pulse" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-amber-900 font-serif tracking-wide">Bean & Brew</h1>
+              <h1 className="text-4xl font-bold text-amber-900 font-serif tracking-wide">mia.kape</h1>
               <p className="text-amber-700 font-medium">Premium Coffee Experience</p>
             </div>
           </div>

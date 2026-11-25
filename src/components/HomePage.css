@@ -60,11 +60,6 @@
   width: 34px;
 }
 
-.home-brand-amp {
-  color: var(--home-rust);
-  font-style: italic;
-}
-
 .home-nav {
   align-items: center;
   display: flex;

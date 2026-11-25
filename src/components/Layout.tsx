@@ -26,7 +26,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) 
                 <Sparkles className="h-4 w-4 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold font-serif tracking-wide">Bean & Brew</h1>
+                <h1 className="text-3xl font-bold font-serif tracking-wide">mia.kape</h1>
                 <p className="text-sm text-amber-200 font-medium">Premium Coffee Experience • Philippines</p>
               </div>
             </div>
@@ -171,9 +171,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) 
                 <Coffee className="h-8 w-8 text-amber-300" />
                 <Sparkles className="h-3 w-3 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
               </div>
-              <span className="text-2xl font-serif font-bold">Bean & Brew</span>
+              <span className="text-2xl font-serif font-bold">mia.kape</span>
             </div>
-            <p className="text-amber-200 mb-4">© 2025 Bean & Brew Philippines. Crafted with love and premium coffee beans.</p>
+            <p className="text-amber-200 mb-4">© 2025 mia.kape Philippines. Crafted with love and premium coffee beans.</p>
             <p className="text-amber-300 text-sm">Serving the finest coffee experience across the Philippines</p>
           </div>
         </div>

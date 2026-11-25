@@ -9,6 +9,9 @@ const STORAGE_KEYS = {
   CART: 'coffee_shop_cart',
 };
 
+const ADMIN_EMAIL = 'admin@miakape.test';
+const LEGACY_ADMIN_EMAIL = 'admin@beanbrewph.com';
+
 // Default data
 const defaultCoffees: Coffee[] = [
   {
@@ -89,7 +92,7 @@ const defaultIngredients: Ingredient[] = [
 
 const defaultAdmin: User = {
   id: 'admin-1',
-  email: 'admin@beanbrewph.com',
+  email: ADMIN_EMAIL,
   password: 'admin123',
   name: 'Coffee Shop Administrator',
   role: 'admin',
@@ -100,11 +103,25 @@ const defaultAdmin: User = {
 export const initializeData = () => {
   // Always ensure admin exists
   const existingUsers = getUsers();
-  const adminExists = existingUsers.find(u => u.email === 'admin@beanbrewph.com');
-  
+  const adminExists = existingUsers.some(user => user.email === ADMIN_EMAIL);
+
   if (!adminExists) {
-    const updatedUsers = [...existingUsers, defaultAdmin];
-    saveUsers(updatedUsers);
+    const legacyAdminIndex = existingUsers.findIndex(
+      user => user.email === LEGACY_ADMIN_EMAIL && user.role === 'admin',
+    );
+
+    if (legacyAdminIndex !== -1) {
+      const migratedAdmin = { ...existingUsers[legacyAdminIndex], email: ADMIN_EMAIL };
+      existingUsers[legacyAdminIndex] = migratedAdmin;
+      saveUsers(existingUsers);
+
+      const currentUser = getCurrentUser();
+      if (currentUser?.id === migratedAdmin.id) {
+        saveCurrentUser(migratedAdmin);
+      }
+    } else {
+      saveUsers([...existingUsers, defaultAdmin]);
+    }
   }
   
   if (!localStorage.getItem(STORAGE_KEYS.COFFEES)) {

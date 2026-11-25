@@ -3,7 +3,11 @@ import { Coffee, Eye, EyeOff, Lock, Mail, UserPlus, Sparkles } from 'lucide-reac
 import { useAuth } from '../context/AuthContext';
 import { validatePassword, validateEmail } from '../utils/validation';
 
-const Login: React.FC = () => {
+interface LoginProps {
+  onBack?: () => void;
+}
+
+const Login: React.FC<LoginProps> = ({ onBack }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
@@ -78,6 +82,15 @@ const Login: React.FC = () => {
       </div>
 
       <div className="max-w-md w-full relative z-10">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-5 text-amber-800 hover:text-amber-950 font-semibold transition-colors"
+          >
+            ← Back to Bean & Brew
+          </button>
+        )}
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-3 mb-6">

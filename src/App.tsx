@@ -13,13 +13,17 @@ import MenuManagement from './components/admin/MenuManagement';
 import Inventory from './components/admin/Inventory';
 import AdminOrders from './components/admin/AdminOrders';
 import UserManagement from './components/admin/UserManagement';
+import HomePage from './components/HomePage';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
   const [currentView, setCurrentView] = useState('menu');
+  const [showLogin, setShowLogin] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     initializeData();
+    setIsInitialized(true);
   }, []);
 
   useEffect(() => {
@@ -60,8 +64,14 @@ const AppContent: React.FC = () => {
     }
   };
 
+  if (!isInitialized) {
+    return null;
+  }
+
   if (!isAuthenticated) {
-    return <Login />;
+    return showLogin
+      ? <Login onBack={() => setShowLogin(false)} />
+      : <HomePage onOrder={() => setShowLogin(true)} />;
   }
 
   return (

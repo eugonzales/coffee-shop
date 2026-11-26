@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, Edit2, Trash2, Shield, UserCheck, Sparkles } from 'lucide-react';
+import { Users, Search, Mail, Trash2, UserCheck, Sparkles } from 'lucide-react';
 import { User } from '../../types';
-import { getUsers, saveUsers } from '../../utils/localStorage';
+import { getUsers, sendPasswordReset, setUserActive } from '../../services/shopData';
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    // Filter out admin users from the display
-    const allUsers = getUsers();
-    const nonAdminUsers = allUsers.filter(user => user.role !== 'admin');
-    setUsers(nonAdminUsers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    let active = true;
+    getUsers()
+      .then(allUsers => {
+        if (active) setUsers(allUsers.filter(user => user.role === 'user' && user.isActive));
+      })
+      .catch(error => {
+        if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load customer accounts.');
+      });
+    return () => { active = false; };
   }, []);
 
   const filteredUsers = users.filter(user => {
@@ -22,51 +28,31 @@ const UserManagement: React.FC = () => {
     return matchesSearch && matchesRole;
   });
 
-  const toggleUserRole = (userId: string) => {
-    const allUsers = getUsers();
-    const updatedUsers = allUsers.map(user =>
-      user.id === userId 
-        ? { ...user, role: user.role === 'admin' ? 'user' : 'admin' as 'admin' | 'user' }
-        : user
-    );
-    saveUsers(updatedUsers);
-    
-    // Update local state (still filtering out admins)
-    const nonAdminUsers = updatedUsers.filter(user => user.role !== 'admin');
-    setUsers(nonAdminUsers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-  };
-
-  const deleteUser = (userId: string) => {
-    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      const allUsers = getUsers();
-      const updatedUsers = allUsers.filter(user => user.id !== userId);
-      saveUsers(updatedUsers);
-      
-      // Update local state
-      const nonAdminUsers = updatedUsers.filter(user => user.role !== 'admin');
-      setUsers(nonAdminUsers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+  const disableUser = async (userId: string) => {
+    if (window.confirm('Disable this customer account? They will no longer be able to sign in.')) {
+      try {
+        await setUserActive(userId, false);
+        setUsers(current => current.filter(user => user.id !== userId));
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : 'Unable to disable this account.');
+      }
     }
   };
 
-  const resetUserPassword = (userId: string) => {
-    if (window.confirm('Are you sure you want to reset this user\'s password to "password123"?')) {
-      const allUsers = getUsers();
-      const updatedUsers = allUsers.map(user =>
-        user.id === userId 
-          ? { ...user, password: 'password123' }
-          : user
-      );
-      saveUsers(updatedUsers);
-      
-      // Update local state
-      const nonAdminUsers = updatedUsers.filter(user => user.role !== 'admin');
-      setUsers(nonAdminUsers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-      alert('Password reset to "password123"');
+  const resetUserPassword = async (email: string) => {
+    if (window.confirm(`Send a password reset email to ${email}?`)) {
+      try {
+        await sendPasswordReset(email);
+        window.alert('Password reset email sent.');
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : 'Unable to send the password reset email.');
+      }
     }
   };
 
   return (
-    <div className="space-y-8">
+    <div className="admin-page space-y-8">
+      {loadError && <p role="alert" className="text-red-700">{loadError}</p>}
       <div className="text-center">
         <div className="flex items-center justify-center space-x-3 mb-4">
           <Sparkles className="h-8 w-8 text-amber-600 animate-pulse" />
@@ -166,19 +152,19 @@ const UserManagement: React.FC = () => {
 
               <div className="flex flex-wrap gap-3">
                 <button
-                  onClick={() => resetUserPassword(user.id)}
+                  onClick={() => resetUserPassword(user.email)}
                   className="px-6 py-3 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-xl font-semibold transition-colors flex items-center space-x-2"
                 >
-                  <Edit2 className="h-4 w-4" />
-                  <span>Reset Password</span>
+                  <Mail className="h-4 w-4" />
+                  <span>Send Password Reset</span>
                 </button>
                 
                 <button
-                  onClick={() => deleteUser(user.id)}
+                  onClick={() => void disableUser(user.id)}
                   className="px-6 py-3 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl font-semibold transition-colors flex items-center space-x-2"
                 >
                   <Trash2 className="h-4 w-4" />
-                  <span>Delete User</span>
+                  <span>Disable Account</span>
                 </button>
               </div>
             </div>

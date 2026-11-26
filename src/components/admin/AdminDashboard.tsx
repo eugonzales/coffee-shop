@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, ShoppingBag, Users, Coffee, AlertTriangle, DollarSign, Sparkles } from 'lucide-react';
-import { Order, User, Coffee as CoffeeType, Ingredient } from '../../types';
-import { getOrders, getUsers, getCoffees, getIngredients } from '../../utils/localStorage';
+import type { LucideIcon } from 'lucide-react';
+import { Order, Ingredient } from '../../types';
+import { getAdminOrders, getUsers, getCoffees, getIngredients } from '../../services/shopData';
 
 interface AdminDashboardProps {
   onViewChange: (view: string) => void;
+}
+
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: LucideIcon;
+  color: string;
+  subtitle?: string;
 }
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onViewChange }) => {
@@ -18,31 +27,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onViewChange }) => {
   });
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [lowStockItems, setLowStockItems] = useState<Ingredient[]>([]);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    const orders = getOrders();
-    const users = getUsers();
-    const coffees = getCoffees();
-    const ingredients = getIngredients();
+    let active = true;
+    Promise.all([getAdminOrders(), getUsers(), getCoffees(), getIngredients()])
+      .then(([orders, users, coffees, ingredients]) => {
+        if (!active) return;
+        const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+        const pendingOrders = orders.filter(order => order.status === 'pending').length;
+        const lowStock = ingredients.filter(ing => ing.stock <= ing.lowStockThreshold);
 
-    const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
-    const pendingOrders = orders.filter(order => order.status === 'pending').length;
-    const lowStock = ingredients.filter(ing => ing.stock <= ing.lowStockThreshold);
-
-    setStats({
-      totalOrders: orders.length,
-      totalRevenue,
-      totalUsers: users.filter(u => u.role === 'user').length,
-      totalMenuItems: coffees.length,
-      pendingOrders,
-      lowStockItems: lowStock.length,
-    });
-
-    setRecentOrders(orders.slice(0, 10).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    setLowStockItems(lowStock);
+        setStats({
+          totalOrders: orders.length,
+          totalRevenue,
+          totalUsers: users.filter(user => user.role === 'user' && user.isActive).length,
+          totalMenuItems: coffees.length,
+          pendingOrders,
+          lowStockItems: lowStock.length,
+        });
+        setRecentOrders(orders.slice(0, 10));
+        setLowStockItems(lowStock);
+      })
+      .catch(error => {
+        if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load dashboard data.');
+      });
+    return () => { active = false; };
   }, []);
 
-  const StatCard = ({ title, value, icon: Icon, color, subtitle }: any) => (
+  const StatCard: React.FC<StatCardProps> = ({ title, value, icon: Icon, color, subtitle }) => (
     <div className="bg-white rounded-3xl shadow-xl p-8 border border-amber-200 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
       <div className="flex items-center justify-between">
         <div>
@@ -59,7 +72,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onViewChange }) => {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="admin-page space-y-8">
       <div className="text-center">
         <div className="flex items-center justify-center space-x-3 mb-4">
           <Sparkles className="h-8 w-8 text-amber-600 animate-pulse" />
@@ -69,6 +82,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onViewChange }) => {
         <p className="text-amber-700 text-lg">Manage your coffee shop operations</p>
         <div className="mt-4 w-24 h-1 bg-gradient-to-r from-amber-600 to-orange-600 mx-auto rounded-full"></div>
       </div>
+
+      {loadError && <p role="alert" className="text-red-700">{loadError}</p>}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

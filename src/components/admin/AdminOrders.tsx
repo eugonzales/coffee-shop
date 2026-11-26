@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, XCircle, Eye, Search, Filter, Truck, Store, Sparkles } from 'lucide-react';
 import { Order, User } from '../../types';
-import { getOrders, saveOrders, getUsers } from '../../utils/localStorage';
+import { getAdminOrders, getUsers, updateOrderStatus as saveOrderStatus } from '../../services/shopData';
 
 const AdminOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -9,10 +9,20 @@ const AdminOrders: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    setOrders(getOrders().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    setUsers(getUsers());
+    let active = true;
+    Promise.all([getAdminOrders(), getUsers()])
+      .then(([allOrders, allUsers]) => {
+        if (!active) return;
+        setOrders(allOrders);
+        setUsers(allUsers);
+      })
+      .catch(error => {
+        if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load orders.');
+      });
+    return () => { active = false; };
   }, []);
 
   const filteredOrders = orders.filter(order => {
@@ -22,12 +32,15 @@ const AdminOrders: React.FC = () => {
     return matchesStatus && matchesSearch;
   });
 
-  const updateOrderStatus = (orderId: string, newStatus: 'pending' | 'completed' | 'cancelled') => {
-    const updatedOrders = orders.map(order =>
-      order.id === orderId ? { ...order, status: newStatus } : order
-    );
-    setOrders(updatedOrders);
-    saveOrders(updatedOrders);
+  const updateOrderStatus = async (orderId: string, newStatus: 'pending' | 'completed' | 'cancelled') => {
+    try {
+      await saveOrderStatus(orderId, newStatus);
+      setOrders(current => current.map(order =>
+        order.id === orderId ? { ...order, status: newStatus } : order
+      ));
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Unable to update order status.');
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -62,7 +75,8 @@ const AdminOrders: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="admin-page space-y-8">
+      {loadError && <p role="alert" className="text-red-700">{loadError}</p>}
       <div className="text-center">
         <div className="flex items-center justify-center space-x-3 mb-4">
           <Sparkles className="h-8 w-8 text-amber-600 animate-pulse" />

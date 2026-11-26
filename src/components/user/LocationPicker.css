@@ -1,0 +1,37 @@
+.location-picker {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.location-picker-map {
+  border: 1px solid #e8e1d8;
+  border-radius: 0.75rem;
+  height: 320px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.location-picker-map .leaflet-container {
+  font: inherit;
+  height: 100%;
+  width: 100%;
+}
+
+.location-picker-marker {
+  background: transparent;
+  border: 0;
+}
+
+.location-picker-marker::after {
+  background: #8e4d32;
+  border: 3px solid #fffefa;
+  border-radius: 50% 50% 50% 0;
+  box-shadow: 0 2px 6px rgb(41 36 31 / 35%);
+  content: '';
+  height: 24px;
+  left: 1px;
+  position: absolute;
+  top: 2px;
+  transform: rotate(-45deg);
+  width: 24px;
+}

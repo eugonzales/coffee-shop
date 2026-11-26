@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Receipt, Clock, CheckCircle, XCircle, Eye, Truck, Store } from 'lucide-react';
 import { Order } from '../../types';
-import { getOrders } from '../../utils/localStorage';
+import { getUserOrders } from '../../services/shopData';
 import { useAuth } from '../../context/AuthContext';
 
 const UserOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [loadError, setLoadError] = useState('');
   const { user } = useAuth();
 
   useEffect(() => {
-    const allOrders = getOrders();
-    const userOrders = allOrders.filter(order => order.userId === user?.id);
-    setOrders(userOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    if (!user) return;
+    let active = true;
+    getUserOrders(user.id)
+      .then(userOrders => { if (active) setOrders(userOrders); })
+      .catch(error => {
+        if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load your orders.');
+      });
+    return () => { active = false; };
   }, [user]);
 
   const getStatusIcon = (status: string) => {
@@ -40,6 +46,10 @@ const UserOrders: React.FC = () => {
         return 'bg-gray-100 text-gray-800';
     }
   };
+
+  if (loadError) {
+    return <p role="alert" className="text-center text-red-700">{loadError}</p>;
+  }
 
   if (orders.length === 0) {
     return (

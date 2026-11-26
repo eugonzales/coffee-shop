@@ -1,25 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Star, Coffee as CoffeeIcon, Heart, Sparkles } from 'lucide-react';
-import { Coffee, Ingredient, CartItem } from '../../types';
-import { getCoffees, getIngredients } from '../../utils/localStorage';
+import { Plus, Coffee as CoffeeIcon, Heart } from 'lucide-react';
+import { Coffee, IngredientOption, CartItem } from '../../types';
+import { getCoffees, getIngredientOptions } from '../../services/shopData';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 
 const Menu: React.FC = () => {
   const [coffees, setCoffees] = useState<Coffee[]>([]);
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [ingredients, setIngredients] = useState<IngredientOption[]>([]);
   const [selectedCoffee, setSelectedCoffee] = useState<Coffee | null>(null);
   const [customIngredients, setCustomIngredients] = useState<string[]>([]);
   const [showCustomizer, setShowCustomizer] = useState(false);
   const [category, setCategory] = useState<string>('all');
-  const [_, forceUpdate] = useState(0);
+  const [loadError, setLoadError] = useState('');
   
   const { addToCart } = useCart();
   const { user, updateUser } = useAuth();
 
   useEffect(() => {
-    setCoffees(getCoffees());
-    setIngredients(getIngredients());
+    let active = true;
+    Promise.all([getCoffees(), getIngredientOptions()])
+      .then(([menu, availableIngredients]) => {
+        if (!active) return;
+        setCoffees(menu);
+        setIngredients(availableIngredients);
+      })
+      .catch(error => {
+        if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load the menu.');
+      });
+    return () => { active = false; };
   }, []);
 
   const categories = ['all', ...Array.from(new Set(coffees.map(c => c.category)))];
@@ -56,36 +65,26 @@ const Menu: React.FC = () => {
   };
 
   // Toggle favorite for a coffee item
-  const toggleFavorite = (coffeeId: string) => {
-    console.log('toggleFavorite called for coffeeId:', coffeeId);
-    console.log('Current user:', user);
-    if (!user) {
-      alert('You must be logged in as a user to favorite items.');
-      return;
-    }
+  const toggleFavorite = async (coffeeId: string) => {
+    if (!user) return;
     const updatedFavorites = user.favoriteItems.includes(coffeeId)
       ? user.favoriteItems.filter(id => id !== coffeeId)
       : [...user.favoriteItems, coffeeId];
-    console.log('Updated favorites:', updatedFavorites);
-    updateUser({
-      ...user,
-      favoriteItems: updatedFavorites,
-    });
-    forceUpdate(n => n + 1);
+    try {
+      await updateUser({ ...user, favoriteItems: updatedFavorites });
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Unable to update favorites.');
+    }
   };
 
-  console.log('Menu render user:', user);
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
         <div className="flex items-center justify-center space-x-3 mb-4">
-          <Sparkles className="h-8 w-8 text-amber-600 animate-pulse" />
-          <h1 className="text-4xl font-bold text-amber-900 font-serif">Our Premium Coffee Menu</h1>
-          <Sparkles className="h-8 w-8 text-amber-600 animate-pulse" />
+          <h1 className="text-4xl font-bold text-amber-900 font-serif">Coffee menu</h1>
         </div>
-        <p className="text-amber-700 text-lg">Handcrafted with the finest beans from around the world</p>
+        <p className="text-amber-700 text-base">Simple favorites, made fresh to order.</p>
         <div className="mt-4 w-24 h-1 bg-gradient-to-r from-amber-600 to-orange-600 mx-auto rounded-full"></div>
       </div>
 
@@ -107,60 +106,57 @@ const Menu: React.FC = () => {
       </div>
 
       {/* Coffee Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {loadError && <p role="alert" className="text-red-700">{loadError}</p>}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {filteredCoffees.map(coffee => (
           <div key={coffee.id} className="bg-white rounded-3xl shadow-xl overflow-hidden border border-amber-200 hover:shadow-2xl transition-all duration-300 transform hover:scale-105 group">
             <div className="relative overflow-hidden">
               <img
                 src={coffee.image}
                 alt={coffee.name}
-                className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-500"
+                className="w-full h-40 object-cover group-hover:scale-110 transition-transform duration-500"
               />
-              <div className="absolute top-4 left-4 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+              <div className="absolute top-3 left-3 bg-amber-800 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-sm">
                 {coffee.category}
               </div>
               <button
                 onClick={() => toggleFavorite(coffee.id)}
-                className={`absolute top-4 right-4 p-3 rounded-full border-2 shadow-md transition-colors duration-300 flex items-center justify-center z-10 ${user?.favoriteItems.includes(coffee.id) ? 'bg-red-100 border-red-400 text-red-600 hover:bg-red-200' : 'bg-white border-amber-300 text-amber-600 hover:bg-amber-50'}`}
+                className={`absolute top-3 right-3 p-2 rounded-full border shadow-sm transition-colors flex items-center justify-center z-10 ${user?.favoriteItems.includes(coffee.id) ? 'bg-red-100 border-red-300 text-red-700 hover:bg-red-200' : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'}`}
                 title={user ? (user.favoriteItems.includes(coffee.id) ? 'Remove from favorites' : 'Add to favorites') : 'Log in to favorite items'}
                 aria-label={user ? (user.favoriteItems.includes(coffee.id) ? 'Remove from favorites' : 'Add to favorites') : 'Log in to favorite items'}
                 disabled={!user}
               >
                 <Heart
-                  className="h-6 w-6"
+                  className="h-5 w-5"
                   fill={user?.favoriteItems.includes(coffee.id) ? 'currentColor' : 'none'}
                 />
               </button>
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
             </div>
             
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-amber-900 mb-2">{coffee.name}</h3>
+            <div className="p-5">
+              <h3 className="text-lg font-bold text-amber-900 mb-2">{coffee.name}</h3>
               <p className="text-amber-700 mb-4 text-sm leading-relaxed">{coffee.description}</p>
               
-              <div className="flex items-center justify-between mb-6">
-                <span className="text-3xl font-bold text-amber-900">₱{coffee.basePrice.toFixed(2)}</span>
-                <div className="flex items-center space-x-1 bg-yellow-50 px-3 py-1 rounded-full">
-                  <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                  <span className="text-sm text-amber-700 font-medium">4.8</span>
-                </div>
+              <div className="mb-4">
+                <span className="text-2xl font-bold text-amber-900">₱{coffee.basePrice.toFixed(2)}</span>
               </div>
 
-              <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => handleAddToCart(coffee)}
-                  className="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-2 shadow-lg"
+                  className="flex-1 min-w-[8rem] bg-stone-900 hover:bg-amber-900 text-white font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-2"
                 >
-                  <Plus className="h-5 w-5" />
+                  <Plus className="h-4 w-4" />
                   <span>Add to Cart</span>
                 </button>
                 
                 {coffee.customizable && (
                   <button
                     onClick={() => handleCustomize(coffee)}
-                    className="w-full bg-white border-2 border-amber-600 text-amber-700 hover:bg-amber-50 font-semibold py-3 px-6 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 shadow-md"
+                    className="flex-1 min-w-[8rem] bg-white border border-stone-300 text-stone-800 hover:bg-stone-50 font-semibold py-2 px-3 rounded-lg transition-colors flex items-center justify-center gap-2"
                   >
-                    <CoffeeIcon className="h-5 w-5" />
+                    <CoffeeIcon className="h-4 w-4" />
                     <span>Customize</span>
                   </button>
                 )}
@@ -172,25 +168,23 @@ const Menu: React.FC = () => {
 
       {/* Customization Modal */}
       {showCustomizer && selectedCoffee && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="p-8">
-              <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold text-amber-900 mb-2">Customize Your {selectedCoffee.name}</h3>
-                <div className="w-16 h-1 bg-gradient-to-r from-amber-600 to-orange-600 mx-auto rounded-full"></div>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 z-50">
+          <div className="bg-white rounded-lg max-w-sm w-full max-h-[78vh] overflow-hidden shadow-lg">
+            <div className="flex max-h-[78vh] flex-col p-3">
+              <div className="mb-3 shrink-0">
+                <h3 className="text-lg font-bold text-amber-900">Customize {selectedCoffee.name}</h3>
               </div>
               
-              <div className="space-y-6">
+              <div className="min-h-0 flex-1 overflow-y-auto space-y-3 pr-1">
                 {['milk', 'syrup', 'extra'].map(category => (
                   <div key={category}>
-                    <h4 className="font-semibold text-amber-900 mb-3 text-lg capitalize flex items-center">
-                      <span className="w-2 h-2 bg-amber-600 rounded-full mr-2"></span>
+                    <h4 className="font-semibold text-amber-900 mb-1 text-xs uppercase tracking-wide">
                       {category}
                     </h4>
-                    <div className="space-y-3">
+                    <div className="space-y-1">
                       {ingredients.filter(ing => ing.category === category).map(ingredient => (
-                        <label key={ingredient.id} className="flex items-center justify-between p-3 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors cursor-pointer">
-                          <div className="flex items-center space-x-3">
+                        <label key={ingredient.id} className="flex items-center justify-between gap-3 px-2 py-1 bg-amber-50 rounded-md hover:bg-amber-100 transition-colors cursor-pointer">
+                          <div className="flex min-w-0 items-center gap-2">
                             <input
                               type="checkbox"
                               checked={customIngredients.includes(ingredient.name)}
@@ -201,11 +195,11 @@ const Menu: React.FC = () => {
                                   setCustomIngredients(customIngredients.filter(ing => ing !== ingredient.name));
                                 }
                               }}
-                              className="rounded border-amber-300 text-amber-600 focus:ring-amber-500 w-5 h-5"
+                              className="h-4 w-4 shrink-0 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
                             />
-                            <span className="text-amber-700 font-medium">{ingredient.name}</span>
+                            <span className="text-xs text-amber-800">{ingredient.name}</span>
                           </div>
-                          <span className="text-amber-600 font-semibold">+₱{ingredient.price.toFixed(2)}</span>
+                          <span className="shrink-0 text-xs font-medium text-amber-700">+₱{ingredient.price.toFixed(2)}</span>
                         </label>
                       ))}
                     </div>
@@ -213,10 +207,10 @@ const Menu: React.FC = () => {
                 ))}
               </div>
 
-              <div className="mt-8 pt-6 border-t-2 border-amber-200">
-                <div className="flex justify-between items-center mb-6 bg-amber-50 p-4 rounded-xl">
-                  <span className="font-semibold text-amber-900 text-lg">Total Price:</span>
-                  <span className="text-2xl font-bold text-amber-900">
+              <div className="mt-3 shrink-0 border-t border-amber-200 pt-3">
+                <div className="flex justify-between items-center mb-3 bg-amber-50 p-2 rounded-md">
+                  <span className="font-semibold text-amber-900 text-sm">Total</span>
+                  <span className="text-lg font-bold text-amber-900">
                     ₱{(selectedCoffee.basePrice + customIngredients.reduce((sum, ing) => {
                       const ingredient = ingredients.find(i => i.name === ing);
                       return sum + (ingredient?.price || 0);
@@ -224,16 +218,16 @@ const Menu: React.FC = () => {
                   </span>
                 </div>
                 
-                <div className="flex space-x-4">
+                <div className="flex gap-2">
                   <button
                     onClick={() => setShowCustomizer(false)}
-                    className="flex-1 bg-gray-200 text-gray-700 py-3 px-6 rounded-xl hover:bg-gray-300 transition-colors font-semibold"
+                    className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-200 transition-colors text-sm font-semibold"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => handleAddToCart(selectedCoffee, customIngredients)}
-                    className="flex-1 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white py-3 px-6 rounded-xl transition-colors font-semibold shadow-lg"
+                    className="flex-1 bg-amber-700 hover:bg-amber-800 text-white py-2 px-4 rounded-md transition-colors text-sm font-semibold"
                   >
                     Add to Cart
                   </button>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, AlertTriangle, Package, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Package, TrendingUp } from 'lucide-react';
 import { Ingredient } from '../../types';
-import { getIngredients, saveIngredients } from '../../utils/localStorage';
+import { getIngredients, updateIngredient } from '../../services/shopData';
 
 const Inventory: React.FC = () => {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -9,9 +9,16 @@ const Inventory: React.FC = () => {
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const [restockAmount, setRestockAmount] = useState('');
   const [category, setCategory] = useState<string>('all');
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    setIngredients(getIngredients());
+    let active = true;
+    getIngredients()
+      .then(items => { if (active) setIngredients(items); })
+      .catch(error => {
+        if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load inventory.');
+      });
+    return () => { active = false; };
   }, []);
 
   const categories = ['all', 'milk', 'syrup', 'extra'];
@@ -21,34 +28,40 @@ const Inventory: React.FC = () => {
 
   const lowStockItems = ingredients.filter(ing => ing.stock <= ing.lowStockThreshold);
 
-  const handleRestock = () => {
+  const handleRestock = async () => {
     if (!selectedIngredient || !restockAmount) return;
 
     const amount = parseInt(restockAmount);
     if (amount <= 0) return;
-
-    const updatedIngredients = ingredients.map(ing =>
-      ing.id === selectedIngredient.id
-        ? { ...ing, stock: ing.stock + amount }
-        : ing
-    );
-
-    setIngredients(updatedIngredients);
-    saveIngredients(updatedIngredients);
-    setShowRestockModal(false);
-    setSelectedIngredient(null);
-    setRestockAmount('');
+    try {
+      const updatedIngredient = await updateIngredient(selectedIngredient.id, {
+        stock: selectedIngredient.stock + amount,
+        lowStockThreshold: selectedIngredient.lowStockThreshold,
+      });
+      setIngredients(current => current.map(ingredient =>
+        ingredient.id === updatedIngredient.id ? updatedIngredient : ingredient
+      ));
+      setShowRestockModal(false);
+      setSelectedIngredient(null);
+      setRestockAmount('');
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Unable to restock this ingredient.');
+    }
   };
 
-  const updateLowStockThreshold = (ingredientId: string, newThreshold: number) => {
-    const updatedIngredients = ingredients.map(ing =>
-      ing.id === ingredientId
-        ? { ...ing, lowStockThreshold: newThreshold }
-        : ing
-    );
-
-    setIngredients(updatedIngredients);
-    saveIngredients(updatedIngredients);
+  const updateLowStockThreshold = async (ingredient: Ingredient, newThreshold: number) => {
+    if (!Number.isInteger(newThreshold) || newThreshold < 0) return;
+    try {
+      const updatedIngredient = await updateIngredient(ingredient.id, {
+        stock: ingredient.stock,
+        lowStockThreshold: newThreshold,
+      });
+      setIngredients(current => current.map(item =>
+        item.id === updatedIngredient.id ? updatedIngredient : item
+      ));
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Unable to update the stock threshold.');
+    }
   };
 
   const getStockStatus = (ingredient: Ingredient) => {
@@ -62,7 +75,8 @@ const Inventory: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="admin-page space-y-6">
+      {loadError && <p role="alert" className="text-red-700">{loadError}</p>}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-amber-900 font-serif mb-2">Inventory Management</h1>
@@ -159,7 +173,15 @@ const Inventory: React.FC = () => {
                   <input
                     type="number"
                     value={ingredient.lowStockThreshold}
-                    onChange={(e) => updateLowStockThreshold(ingredient.id, parseInt(e.target.value))}
+                    onChange={(e) => {
+                      const threshold = parseInt(e.target.value);
+                      setIngredients(current => current.map(item =>
+                        item.id === ingredient.id && Number.isInteger(threshold)
+                          ? { ...item, lowStockThreshold: threshold }
+                          : item
+                      ));
+                    }}
+                    onBlur={(e) => void updateLowStockThreshold(ingredient, parseInt(e.target.value))}
                     className="w-16 px-2 py-1 border border-amber-300 rounded text-center text-sm"
                     min="1"
                   />

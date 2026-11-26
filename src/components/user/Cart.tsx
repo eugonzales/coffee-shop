@@ -3,7 +3,7 @@ import { Minus, Plus, Trash2, ShoppingBag, CreditCard, QrCode, Sparkles, MapPin,
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { Order } from '../../types';
-import { getOrders, saveOrders, getIngredients, saveIngredients, getCoffees } from '../../utils/localStorage';
+import { placeOrder } from '../../services/shopData';
 
 interface CartProps {
   onViewChange: (view: string) => void;
@@ -19,6 +19,7 @@ const Cart: React.FC<CartProps> = ({ onViewChange }) => {
   const [tip, setTip] = useState(0);
   const [showReceipt, setShowReceipt] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [checkoutError, setCheckoutError] = useState('');
 
   // Auto-populate delivery address from user profile
   useEffect(() => {
@@ -31,55 +32,29 @@ const Cart: React.FC<CartProps> = ({ onViewChange }) => {
   const subtotal = getTotalPrice();
   const total = subtotal + deliveryFee + tip;
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (items.length === 0) return;
+    if (!user) {
+      setCheckoutError('Sign in before placing an order.');
+      return;
+    }
 
-    // Deduct inventory for each ingredient used in the order
-    const ingredients = getIngredients();
-    // For each cart item, decrement the stock of its ingredients (default and custom)
-    items.forEach(item => {
-      // Combine default and custom ingredients
-      const allIngredients = new Set<string>();
-      // Find the coffee to get its default ingredients
-      // (If you want to also decrement coffee stock, add logic here)
-      // For now, only ingredients are decremented
-      item.customIngredients.forEach(ing => allIngredients.add(ing));
-      // Find the coffee's default ingredients
-      const coffee = getCoffees().find(c => c.id === item.coffeeId);
-      if (coffee) {
-        coffee.ingredients.forEach(ing => allIngredients.add(ing));
-      }
-      // Decrement stock for each ingredient used
-      allIngredients.forEach(ingredientName => {
-        const ingredient = ingredients.find(i => i.name === ingredientName);
-        if (ingredient) {
-          ingredient.stock = Math.max(0, ingredient.stock - item.quantity);
-        }
-      });
-    });
-    saveIngredients(ingredients);
-
-    const order: Order = {
-      id: Date.now().toString(),
-      userId: user!.id,
-      items: [...items],
-      total: total,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      paymentMethod,
-      orderType,
-      deliveryAddress: orderType === 'delivery' ? deliveryAddress : undefined,
-      tip,
-    };
-
-    const orders = getOrders();
-    orders.push(order);
-    saveOrders(orders);
-
-    setCurrentOrder(order);
-    clearCart();
-    setShowCheckout(false);
-    setShowReceipt(true);
+    setCheckoutError('');
+    try {
+      const order = await placeOrder(
+        items,
+        paymentMethod,
+        orderType,
+        orderType === 'delivery' ? deliveryAddress : null,
+        tip,
+      );
+      setCurrentOrder(order);
+      clearCart();
+      setShowCheckout(false);
+      setShowReceipt(true);
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : 'Unable to place your order.');
+    }
   };
 
   const closeReceipt = () => {
@@ -178,6 +153,7 @@ const Cart: React.FC<CartProps> = ({ onViewChange }) => {
         </div>
 
         {/* Order Summary */}
+        {checkoutError && <p role="alert" className="text-red-700">{checkoutError}</p>}
         <div className="bg-white rounded-3xl shadow-xl p-8 border border-amber-200 h-fit">
           <h3 className="text-2xl font-bold text-amber-900 mb-6 flex items-center">
             <span>Order Summary</span>

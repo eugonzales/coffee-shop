@@ -6,10 +6,13 @@ import './Login.css';
 
 interface LoginProps {
   onBack?: () => void;
+  passwordRecovery?: boolean;
 }
 
-const Login: React.FC<LoginProps> = ({ onBack }) => {
+const Login: React.FC<LoginProps> = ({ onBack, passwordRecovery = false }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isResetRequest, setIsResetRequest] = useState(false);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState(passwordRecovery);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -17,21 +20,42 @@ const Login: React.FC<LoginProps> = ({ onBack }) => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { login, register } = useAuth();
+  const { login, register, requestPasswordReset, updatePassword } = useAuth();
+
+  React.useEffect(() => {
+    setIsPasswordRecovery(passwordRecovery);
+  }, [passwordRecovery]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrors([]);
+    setNotice('');
 
     try {
-      if (isLogin) {
-        const success = await login(formData.email, formData.password);
-        if (!success) {
-          setErrors(['Invalid email or password']);
+      if (isPasswordRecovery) {
+        const passwordValidation = validatePassword(formData.password);
+        if (!passwordValidation.isValid) {
+          setErrors(passwordValidation.errors);
+          return;
         }
+        await updatePassword(formData.password);
+        setIsPasswordRecovery(false);
+        setIsLogin(true);
+        setFormData({ email: '', password: '', name: '' });
+        setNotice('Password updated. You can now sign in with your new password.');
+      } else if (isResetRequest) {
+        if (!validateEmail(formData.email)) {
+          setErrors(['Please enter a valid email address']);
+          return;
+        }
+        await requestPasswordReset(formData.email);
+        setNotice('If that email has an account, a password reset link is on its way.');
+      } else if (isLogin) {
+        await login(formData.email, formData.password);
       } else {
         // Validate form data
         const validationErrors: string[] = [];
@@ -54,13 +78,19 @@ const Login: React.FC<LoginProps> = ({ onBack }) => {
           return;
         }
 
-        const success = await register(formData.email, formData.password, formData.name);
-        if (!success) {
-          setErrors(['Email already exists']);
+        const requiresEmailConfirmation = await register(
+          formData.email,
+          formData.password,
+          formData.name,
+        );
+        if (requiresEmailConfirmation) {
+          setIsLogin(true);
+          setFormData({ email: formData.email, password: '', name: '' });
+          setNotice('Account created. Check your email to confirm your address before signing in.');
         }
       }
-    } catch {
-      setErrors(['An error occurred. Please try again.']);
+    } catch (error) {
+      setErrors([error instanceof Error ? error.message : 'Unable to complete sign-in. Please try again.']);
     } finally {
       setLoading(false);
     }
@@ -101,17 +131,32 @@ const Login: React.FC<LoginProps> = ({ onBack }) => {
           )}
 
           <div className="auth-heading">
-            <p className="auth-eyebrow">{isLogin ? 'Good to see you' : 'Join our table'}</p>
-            <h2>{isLogin ? 'Welcome back.' : 'Make yourself at home.'}</h2>
+            <p className="auth-eyebrow">
+              {isPasswordRecovery ? 'Secure your account' : isResetRequest ? 'Account recovery' : isLogin ? 'Good to see you' : 'Join our table'}
+            </p>
+            <h2>
+              {isPasswordRecovery
+                ? 'Choose a new password.'
+                : isResetRequest
+                  ? 'Reset your password.'
+                  : isLogin
+                    ? 'Welcome back.'
+                    : 'Make yourself at home.'}
+            </h2>
             <p>
-              {isLogin
+              {isPasswordRecovery
+                ? 'Choose a new password for your mia.kape account.'
+                : isResetRequest
+                  ? 'We’ll email you a secure link to reset your password.'
+                  : isLogin
                 ? 'Sign in to order your favorites and pick up where you left off.'
                 : 'Create an account to order ahead and make every cup yours.'}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
-            {!isLogin && (
+            {notice && <p className="auth-notice" role="status">{notice}</p>}
+            {!isLogin && !isResetRequest && !isPasswordRecovery && (
               <div className="auth-field">
                 <label htmlFor="auth-name">Full name</label>
                 <input
@@ -127,7 +172,8 @@ const Login: React.FC<LoginProps> = ({ onBack }) => {
               </div>
             )}
 
-            <div className="auth-field">
+            {!isPasswordRecovery && (
+              <div className="auth-field">
               <label htmlFor="auth-email">Email address</label>
               <div className="auth-input-wrap">
                 <Mail size={18} aria-hidden="true" />
@@ -142,9 +188,11 @@ const Login: React.FC<LoginProps> = ({ onBack }) => {
                   required
                 />
               </div>
-            </div>
+              </div>
+            )}
 
-            <div className="auth-field">
+            {!isResetRequest && (
+              <div className="auth-field">
               <label htmlFor="auth-password">Password</label>
               <div className="auth-input-wrap">
                 <Lock size={18} aria-hidden="true" />
@@ -170,7 +218,8 @@ const Login: React.FC<LoginProps> = ({ onBack }) => {
                     : <Eye size={18} aria-hidden="true" />}
                 </button>
               </div>
-            </div>
+              </div>
+            )}
 
             {errors.length > 0 && (
               <div className="auth-errors" role="alert" aria-live="polite">
@@ -187,33 +236,50 @@ const Login: React.FC<LoginProps> = ({ onBack }) => {
                   Please wait…
                 </>
               ) : (
-                isLogin ? 'Sign in' : 'Create account'
+                isPasswordRecovery
+                  ? 'Update password'
+                  : isResetRequest
+                    ? 'Send reset link'
+                    : isLogin
+                      ? 'Sign in'
+                      : 'Create account'
               )}
             </button>
           </form>
 
-          <div className="auth-toggle">
-            <p>{isLogin ? "Don't have an account?" : 'Already have an account?'}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setFormData({ email: '', password: '', name: '' });
-                setErrors([]);
-              }}
-            >
-              <UserPlus size={16} aria-hidden="true" />
-              {isLogin ? 'Create an account' : 'Sign in'}
+          {isLogin && !isResetRequest && !isPasswordRecovery && (
+            <button type="button" className="auth-recovery-link" onClick={() => {
+              setIsResetRequest(true);
+              setNotice('');
+              setErrors([]);
+            }}>
+              Forgot password?
             </button>
-          </div>
-
-          {isLogin && (
-            <aside className="auth-demo">
-              <p className="auth-demo-heading">Demo admin access</p>
-              <p><strong>Email</strong><span>admin@miakape.test</span></p>
-              <p><strong>Password</strong><span>admin123</span></p>
-            </aside>
           )}
+
+          {!isPasswordRecovery && (
+            <div className="auth-toggle">
+              <p>{isResetRequest ? 'Remembered your password?' : isLogin ? "Don't have an account?" : 'Already have an account?'}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isResetRequest) {
+                    setIsResetRequest(false);
+                    setIsLogin(true);
+                  } else {
+                    setIsLogin(!isLogin);
+                  }
+                  setFormData({ email: '', password: '', name: '' });
+                  setErrors([]);
+                  setNotice('');
+                }}
+              >
+                <UserPlus size={16} aria-hidden="true" />
+                {isResetRequest ? 'Sign in' : isLogin ? 'Create an account' : 'Sign in'}
+              </button>
+            </div>
+          )}
+
         </div>
       </main>
     </div>

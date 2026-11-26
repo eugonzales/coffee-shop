@@ -1,13 +1,19 @@
 export interface User {
   id: string;
   email: string;
-  password: string;
   name: string;
   role: 'user' | 'admin';
   favoriteItems: string[];
   createdAt: string;
   address?: string;
   phone?: string;
+  location?: UserLocation;
+  isActive: boolean;
+}
+
+export interface UserLocation {
+  latitude: number;
+  longitude: number;
 }
 
 export interface Coffee {
@@ -28,6 +34,13 @@ export interface Ingredient {
   stock: number;
   category: 'milk' | 'syrup' | 'extra';
   lowStockThreshold: number;
+}
+
+export interface IngredientOption {
+  id: string;
+  name: string;
+  price: number;
+  category: Ingredient['category'];
 }
 
 export interface CartItem {

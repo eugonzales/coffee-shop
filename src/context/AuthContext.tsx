@@ -1,12 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, AuthState } from '../types';
-import { getCurrentUser, saveCurrentUser, getUsers, saveUsers } from '../utils/localStorage';
+import { getProfile, sendPasswordReset } from '../services/shopData';
+import { getSupabase } from '../lib/supabase';
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  isLoading: boolean;
+  authError: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<boolean>;
-  updateUser: (user: User) => void;
+  requestPasswordReset: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
+  updateUser: (user: User) => Promise<User>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,91 +28,140 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : 'Unable to restore your Supabase session.';
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    const user = getCurrentUser();
-    if (user) {
-      setAuthState({
-        user,
-        isAuthenticated: true,
+    let active = true;
+    const supabase = getSupabase();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(event => {
+      if (event === 'SIGNED_OUT' && active) {
+        setAuthState({ user: null, isAuthenticated: false });
+      }
+    });
+
+    void supabase.auth.getSession()
+      .then(async ({ data, error }) => {
+        if (error) throw error;
+        if (!data.session) return;
+
+        const profile = await getProfile(data.session.user.id);
+        if (!profile.isActive) {
+          await supabase.auth.signOut();
+          return;
+        }
+        if (active) setAuthState({ user: profile, isAuthenticated: true });
+      })
+      .catch(error => {
+        if (active) setAuthError(getErrorMessage(error));
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
       });
-    }
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    const users = getUsers();
-    const user = users.find(u => u.email === email && u.password === password);
-    
-    if (user) {
-      setAuthState({
-        user,
-        isAuthenticated: true,
-      });
-      saveCurrentUser(user);
-      return true;
+  const login = async (email: string, password: string) => {
+    const supabase = getSupabase();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    if (error) throw error;
+    if (!data.user) throw new Error('Supabase did not return a signed-in user.');
+
+    const profile = await getProfile(data.user.id);
+    if (!profile.isActive) {
+      await supabase.auth.signOut();
+      throw new Error('This account has been disabled. Contact the shop for help.');
     }
+    setAuthState({ user: profile, isAuthenticated: true });
+    setAuthError(null);
+  };
+
+  const logout = async () => {
+    const { error } = await getSupabase().auth.signOut();
+    if (error) throw error;
+    setAuthState({ user: null, isAuthenticated: false });
+  };
+
+  const register = async (email: string, password: string, name: string) => {
+    const { data, error } = await getSupabase().auth.signUp({
+      email: email.trim(),
+      password,
+      options: { data: { full_name: name.trim() } },
+    });
+    if (error) throw error;
+    if (!data.session) return true;
+    if (!data.user) throw new Error('Supabase did not return a registered user.');
+
+    const profile = await getProfile(data.user.id);
+    setAuthState({ user: profile, isAuthenticated: true });
+    setAuthError(null);
     return false;
   };
 
-  const logout = () => {
-    setAuthState({
-      user: null,
-      isAuthenticated: false,
-    });
-    saveCurrentUser(null);
+  const requestPasswordReset = (email: string) => sendPasswordReset(email);
+
+  const updatePassword = async (password: string) => {
+    const { error } = await getSupabase().auth.updateUser({ password });
+    if (error) throw error;
   };
 
-  const register = async (email: string, password: string, name: string): Promise<boolean> => {
-    const users = getUsers();
-    const existingUser = users.find(u => u.email === email);
-    
-    if (existingUser) {
-      return false;
+  const updateUser = async (updatedUser: User) => {
+    const currentUser = authState.user;
+    if (!currentUser) throw new Error('You must be signed in to update your profile.');
+
+    const supabase = getSupabase();
+    if (updatedUser.email !== currentUser.email) {
+      const { error } = await supabase.auth.updateUser({ email: updatedUser.email.trim() });
+      if (error) throw error;
     }
 
-    const newUser: User = {
-      id: Date.now().toString(),
-      email,
-      password,
-      name,
-      role: 'user',
-      favoriteItems: [],
-      createdAt: new Date().toISOString(),
-    };
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: updatedUser.name.trim(),
+        address: updatedUser.address || null,
+        phone: updatedUser.phone || null,
+        location_latitude: updatedUser.location?.latitude ?? null,
+        location_longitude: updatedUser.location?.longitude ?? null,
+        favorite_items: updatedUser.favoriteItems,
+      })
+      .eq('id', currentUser.id);
+    if (error) throw error;
 
-    users.push(newUser);
-    saveUsers(users);
-    
-    setAuthState({
-      user: newUser,
-      isAuthenticated: true,
-    });
-    saveCurrentUser(newUser);
-    return true;
-  };
-
-  const updateUser = (updatedUser: User) => {
-    const users = getUsers();
-    const userIndex = users.findIndex(u => u.id === updatedUser.id);
-    if (userIndex !== -1) {
-      users[userIndex] = updatedUser;
-      saveUsers(users);
-      saveCurrentUser(updatedUser);
-      const freshUser = getCurrentUser();
-      setAuthState({
-        user: freshUser,
-        isAuthenticated: true,
-      });
-    }
+    const profile = await getProfile(currentUser.id);
+    setAuthState({ user: profile, isAuthenticated: true });
+    return profile;
   };
 
   return (
-    <AuthContext.Provider value={{ ...authState, login, logout, register, updateUser }}>
+    <AuthContext.Provider
+      value={{
+        ...authState,
+        isLoading,
+        authError,
+        login,
+        logout,
+        register,
+        requestPasswordReset,
+        updatePassword,
+        updateUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

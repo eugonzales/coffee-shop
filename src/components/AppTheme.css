@@ -1,0 +1,601 @@
+.app-shell {
+  --app-ink: #29241f;
+  --app-muted: #746b62;
+  --app-rust: #8e4d32;
+  --app-cream: #f7f4ef;
+  --app-paper: #fffefa;
+  --app-line: #e8e1d8;
+  background: var(--app-paper);
+  color: var(--app-ink);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+}
+
+.app-shell *,
+.app-shell *::before,
+.app-shell *::after {
+  box-sizing: border-box;
+}
+
+.app-shell button,
+.app-shell a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-shell button:focus-visible,
+.app-shell a:focus-visible,
+.app-shell input:focus-visible,
+.app-shell select:focus-visible,
+.app-shell textarea:focus-visible {
+  outline: 3px solid #b76d42;
+  outline-offset: 3px;
+}
+
+.app-header {
+  background: var(--app-paper);
+  border-bottom: 1px solid var(--app-line);
+}
+
+.app-header-inner {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin: 0 auto;
+  max-width: 1200px;
+  min-height: 64px;
+  padding: 0 clamp(1rem, 4vw, 3.5rem);
+}
+
+.app-brand {
+  align-items: center;
+  color: var(--app-ink);
+  display: inline-flex;
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-size: 1.1rem;
+  gap: 0.5rem;
+  letter-spacing: -0.035em;
+  text-decoration: none;
+}
+
+.app-brand-mark {
+  align-items: center;
+  background: var(--app-ink);
+  border-radius: 50%;
+  color: #fffaf3;
+  display: inline-flex;
+  height: 29px;
+  justify-content: center;
+  width: 29px;
+}
+
+.app-account,
+.app-header-actions {
+  align-items: center;
+  display: flex;
+}
+
+.app-account {
+  gap: 1.5rem;
+}
+
+.app-welcome {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: right;
+}
+
+.app-welcome span {
+  color: var(--app-muted);
+  font-size: 0.68rem;
+}
+
+.app-welcome strong {
+  color: var(--app-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.app-header-actions {
+  gap: 0.55rem;
+}
+
+.app-icon-button,
+.app-logout {
+  align-items: center;
+  background: var(--app-ink);
+  border: 1px solid var(--app-ink);
+  border-radius: 3px;
+  color: white;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 36px;
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.app-icon-button {
+  min-width: 40px;
+  position: relative;
+}
+
+.app-logout {
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  gap: 0.5rem;
+  padding: 0 0.85rem;
+}
+
+.app-icon-button:hover,
+.app-logout:hover {
+  background: var(--app-rust);
+  border-color: var(--app-rust);
+  transform: translateY(-1px);
+}
+
+.app-cart-count {
+  align-items: center;
+  background: var(--app-rust);
+  border: 2px solid var(--app-paper);
+  border-radius: 50%;
+  color: white;
+  display: inline-flex;
+  font-size: 0.57rem;
+  font-weight: 700;
+  height: 19px;
+  justify-content: center;
+  min-width: 19px;
+  position: absolute;
+  right: -7px;
+  top: -7px;
+}
+
+.app-nav {
+  background: var(--app-cream);
+  border-bottom: 1px solid var(--app-line);
+}
+
+.app-nav-inner {
+  display: flex;
+  gap: 0.3rem;
+  margin: 0 auto;
+  max-width: 1200px;
+  overflow-x: auto;
+  padding: 0 clamp(0.85rem, 4vw, 3.5rem);
+  scrollbar-width: none;
+}
+
+.app-nav-inner::-webkit-scrollbar {
+  display: none;
+}
+
+.app-nav-link {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--app-muted);
+  cursor: pointer;
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 0.73rem;
+  font-weight: 600;
+  min-height: 38px;
+  padding: 0 0.65rem;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.app-nav-link:hover,
+.app-nav-link.is-active {
+  border-bottom-color: var(--app-rust);
+  color: var(--app-ink);
+}
+
+.app-main {
+  margin: 0 auto;
+  max-width: 1200px;
+  min-height: calc(100vh - 190px);
+  padding: clamp(1.25rem, 3vw, 2.25rem) clamp(1rem, 4vw, 3.5rem);
+}
+
+.admin-page {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 960px;
+  width: 100%;
+}
+
+.admin-page [class~="mb-6"] {
+  margin-bottom: 1rem !important;
+}
+
+.admin-page [class~="py-16"] {
+  padding-bottom: 2rem !important;
+  padding-top: 2rem !important;
+}
+
+.admin-page [class~="h-20"] {
+  height: 3rem !important;
+  width: 3rem !important;
+}
+
+.admin-page img[class~="h-48"] {
+  height: 9rem !important;
+}
+
+.app-shell main h1,
+.app-shell main h2,
+.app-shell main h3 {
+  color: var(--app-ink);
+  font-family: 'DM Serif Display', Georgia, serif;
+  font-weight: 400;
+}
+
+.app-shell main h1 {
+  font-size: clamp(1.65rem, 2.5vw, 1.9rem);
+  letter-spacing: -0.04em;
+}
+
+.app-shell main h2 {
+  font-size: 1.18rem;
+}
+
+.app-shell main h3 {
+  font-size: 1rem;
+}
+
+.app-shell main [class~="text-4xl"] {
+  font-size: 1.7rem !important;
+}
+
+.app-shell main [class~="text-3xl"] {
+  font-size: 1.4rem !important;
+}
+
+.app-shell main [class~="text-2xl"] {
+  font-size: 1.18rem !important;
+}
+
+.app-shell main [class~="text-xl"] {
+  font-size: 1rem !important;
+}
+
+.app-shell main [class~="text-lg"] {
+  font-size: 0.92rem !important;
+}
+
+.app-shell main button {
+  min-height: 36px;
+}
+
+.app-shell main button[class~="py-3"] {
+  padding-bottom: 0.45rem !important;
+  padding-top: 0.45rem !important;
+}
+
+.app-shell main button[class~="py-4"] {
+  padding-bottom: 0.6rem !important;
+  padding-top: 0.6rem !important;
+}
+
+.app-shell main button[class~="py-2"] {
+  padding-bottom: 0.35rem !important;
+  padding-top: 0.35rem !important;
+}
+
+.app-shell main button[class~="px-6"] {
+  padding-left: 0.9rem !important;
+  padding-right: 0.9rem !important;
+}
+
+.app-shell main button[class~="p-3"] {
+  padding: 0.4rem !important;
+}
+
+.app-shell main [class~="p-8"] {
+  padding: 1rem !important;
+}
+
+.app-shell main [class~="p-6"] {
+  padding: 0.875rem !important;
+}
+
+.app-shell main [class~="p-5"] {
+  padding: 0.875rem !important;
+}
+
+.app-shell main [class~="p-4"] {
+  padding: 0.75rem !important;
+}
+
+.app-shell main [class~="p-3"] {
+  padding: 0.625rem !important;
+}
+
+.app-shell main [class~="gap-8"] {
+  gap: 1rem !important;
+}
+
+.app-shell main [class~="gap-6"] {
+  gap: 0.75rem !important;
+}
+
+.app-shell main [class~="gap-4"] {
+  gap: 0.65rem !important;
+}
+
+.app-shell main [class~="space-y-8"] > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 1.25rem !important;
+}
+
+.app-shell main [class~="space-y-6"] > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 1rem !important;
+}
+
+.app-shell main [class~="space-y-4"] > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.65rem !important;
+}
+
+.app-shell main [class~="space-y-3"] > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0.5rem !important;
+}
+
+.app-shell main h1 svg {
+  display: none;
+}
+
+.app-footer {
+  align-items: center;
+  background: var(--app-ink);
+  color: #c5b9ab;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem 2rem;
+  justify-content: space-between;
+  padding: 0.85rem clamp(1rem, 4vw, 3.5rem);
+}
+
+.app-footer-brand {
+  color: white;
+  font-size: 0.98rem;
+}
+
+.app-footer-brand .app-brand-mark {
+  background: #fffaf3;
+  color: var(--app-ink);
+  height: 27px;
+  width: 27px;
+}
+
+.app-footer p,
+.app-footer-tagline {
+  font-size: 0.69rem;
+  margin: 0;
+}
+
+.app-footer-tagline {
+  color: #e5b38f;
+}
+
+.app-shell [class*="text-amber-900"],
+.app-shell [class*="text-amber-950"],
+.app-shell [class*="text-amber-800"] {
+  color: var(--app-ink) !important;
+}
+
+.app-shell [class*="text-amber-700"] {
+  color: var(--app-muted) !important;
+}
+
+.app-shell [class*="text-amber-600"],
+.app-shell [class*="text-amber-500"] {
+  color: var(--app-rust) !important;
+}
+
+.app-shell [class*="text-amber-200"],
+.app-shell [class*="text-amber-300"] {
+  color: #b28a70 !important;
+}
+
+.app-shell [class~="bg-amber-50"],
+.app-shell [class~="bg-orange-50"],
+.app-shell [class~="bg-yellow-50"],
+.app-shell [class~="from-amber-50"],
+.app-shell [class~="from-orange-50"],
+.app-shell [class~="from-yellow-50"] {
+  background-color: var(--app-cream) !important;
+  background-image: none !important;
+}
+
+.app-shell [class~="bg-amber-100"],
+.app-shell [class~="bg-orange-100"],
+.app-shell [class~="bg-yellow-100"] {
+  background-color: #eee7de !important;
+}
+
+.app-shell [class~="bg-amber-600"],
+.app-shell [class~="bg-orange-600"],
+.app-shell [class~="from-amber-600"],
+.app-shell [class~="from-orange-600"] {
+  background-color: var(--app-rust) !important;
+  background-image: none !important;
+}
+
+.app-shell button[class~="bg-amber-600"],
+.app-shell button[class~="bg-orange-600"],
+.app-shell button[class~="from-amber-600"],
+.app-shell button[class~="from-orange-600"] {
+  background-color: var(--app-ink) !important;
+  border-color: var(--app-ink) !important;
+  color: white !important;
+}
+
+.app-shell [class~="from-amber-500"],
+.app-shell [class~="from-blue-500"],
+.app-shell [class~="from-green-500"],
+.app-shell [class~="from-purple-500"],
+.app-shell [class~="from-red-500"],
+.app-shell [class~="from-orange-500"] {
+  background-color: var(--app-rust) !important;
+  background-image: none !important;
+}
+
+.app-shell main > .space-y-8 > .text-center:first-child,
+.app-shell main > .space-y-6 > .text-center:first-child {
+  text-align: left !important;
+}
+
+.app-shell main > .space-y-8 > .text-center:first-child > .flex.justify-center,
+.app-shell main > .space-y-6 > .text-center:first-child > .flex.justify-center {
+  justify-content: flex-start !important;
+}
+
+.app-shell main svg.animate-pulse {
+  display: none;
+}
+
+.app-shell main svg[class~="lucide-sparkles"] {
+  display: none;
+}
+
+.app-shell main > .space-y-8 > .text-center:first-child > div[class~="w-24"],
+.app-shell main > .space-y-6 > .text-center:first-child > div[class~="w-24"] {
+  display: none;
+}
+
+.app-shell [class*="border-amber-"] {
+  border-color: var(--app-line) !important;
+}
+
+.app-shell [class*="rounded-3xl"],
+.app-shell [class*="rounded-2xl"],
+.app-shell [class*="rounded-xl"],
+.app-shell [class*="rounded-lg"] {
+  border-radius: 5px !important;
+}
+
+.app-shell main button[class*="rounded-full"] {
+  border-radius: 3px !important;
+}
+
+.app-shell main [class*="hover:scale-"]:hover {
+  transform: translateY(-1px) !important;
+}
+
+.app-shell [class*="shadow"] {
+  box-shadow: 0 1px 6px rgba(41, 36, 31, 0.06) !important;
+}
+
+.app-shell input:not([type="checkbox"]):not([type="radio"]),
+.app-shell select,
+.app-shell textarea {
+  background-color: var(--app-paper);
+  border-color: #dcd3c9;
+  border-radius: 3px;
+  color: var(--app-ink);
+}
+
+.app-shell input:focus,
+.app-shell select:focus,
+.app-shell textarea:focus {
+  border-color: var(--app-rust);
+  box-shadow: 0 0 0 3px rgba(142, 77, 50, 0.13);
+}
+
+.app-shell main input:not([type="checkbox"]):not([type="radio"]),
+.app-shell main select,
+.app-shell main textarea {
+  padding: 0.55rem 0.7rem;
+}
+
+.app-shell main svg[class~="h-10"] {
+  height: 1.6rem;
+  width: 1.6rem;
+}
+
+.app-shell main svg[class~="h-8"] {
+  height: 1.35rem;
+  width: 1.35rem;
+}
+
+.app-shell main svg[class~="h-6"] {
+  height: 1.15rem;
+  width: 1.15rem;
+}
+
+@media (max-width: 640px) {
+  .app-header-inner {
+    gap: 0.8rem;
+    min-height: 58px;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .app-brand {
+    font-size: 1.02rem;
+    gap: 0.45rem;
+  }
+
+  .app-brand-mark {
+    height: 27px;
+    width: 27px;
+  }
+
+  .app-account {
+    gap: 0.65rem;
+  }
+
+  .app-welcome span {
+    display: none;
+  }
+
+  .app-welcome strong {
+    font-size: 0.7rem;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-logout {
+    min-height: 34px;
+    padding: 0 0.55rem;
+  }
+
+  .app-logout span {
+    display: none;
+  }
+
+  .app-nav-inner {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .app-nav-link {
+    min-height: 38px;
+    padding: 0 0.65rem;
+  }
+
+  .app-main {
+    min-height: calc(100vh - 190px);
+    padding: 1rem 0.85rem;
+  }
+
+  .app-footer {
+    align-items: flex-start;
+    padding: 0.85rem;
+  }
+
+  .app-footer-tagline {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell *,
+  .app-shell *::before,
+  .app-shell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

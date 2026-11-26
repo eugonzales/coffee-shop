@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Save, X } from 'lucide-react';
 import { Coffee } from '../../types';
-import { getCoffees, saveCoffees } from '../../utils/localStorage';
+import { createCoffee, deleteCoffee, getCoffees, updateCoffee, uploadMenuImage } from '../../services/shopData';
 
 const MenuManagement: React.FC = () => {
   const [coffees, setCoffees] = useState<Coffee[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingCoffee, setEditingCoffee] = useState<Coffee | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [loadError, setLoadError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -18,36 +20,45 @@ const MenuManagement: React.FC = () => {
   });
 
   useEffect(() => {
-    setCoffees(getCoffees());
+    let active = true;
+    getCoffees()
+      .then(menu => { if (active) setCoffees(menu); })
+      .catch(error => {
+        if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load the menu.');
+      });
+    return () => { active = false; };
   }, []);
 
   const categories = ['Espresso', 'Coffee', 'Latte', 'Specialty', 'Cold Brew', 'Tea'];
   const availableIngredients = ['espresso', 'milk', 'steamed milk', 'foam', 'vanilla syrup', 'caramel syrup', 'hazelnut syrup', 'whipped cream'];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const coffeeData: Coffee = {
-      id: editingCoffee ? editingCoffee.id : Date.now().toString(),
-      name: formData.name,
-      description: formData.description,
-      basePrice: parseFloat(formData.basePrice),
-      category: formData.category,
-      image: formData.image || 'https://images.pexels.com/photos/312418/pexels-photo-312418.jpeg?auto=compress&cs=tinysrgb&w=400',
-      ingredients: formData.ingredients,
-      customizable: formData.customizable,
-    };
+    setLoadError('');
+    try {
+      const coffeeData: Coffee = {
+        id: editingCoffee ? editingCoffee.id : crypto.randomUUID(),
+        name: formData.name,
+        description: formData.description,
+        basePrice: parseFloat(formData.basePrice),
+        category: formData.category,
+        image: imageFile
+          ? await uploadMenuImage(imageFile)
+          : formData.image || '/images/coffee.jpg',
+        ingredients: formData.ingredients,
+        customizable: formData.customizable,
+      };
 
-    let updatedCoffees;
-    if (editingCoffee) {
-      updatedCoffees = coffees.map(c => c.id === editingCoffee.id ? coffeeData : c);
-    } else {
-      updatedCoffees = [...coffees, coffeeData];
+      const savedCoffee = editingCoffee
+        ? await updateCoffee(coffeeData)
+        : await createCoffee(coffeeData);
+      setCoffees(current => editingCoffee
+        ? current.map(coffee => coffee.id === savedCoffee.id ? savedCoffee : coffee)
+        : [...current, savedCoffee]);
+      resetForm();
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Unable to save this menu item.');
     }
-
-    setCoffees(updatedCoffees);
-    saveCoffees(updatedCoffees);
-    resetForm();
   };
 
   const handleEdit = (coffee: Coffee) => {
@@ -64,11 +75,14 @@ const MenuManagement: React.FC = () => {
     setShowForm(true);
   };
 
-  const handleDelete = (coffeeId: string) => {
+  const handleDelete = async (coffeeId: string) => {
     if (window.confirm('Are you sure you want to delete this coffee?')) {
-      const updatedCoffees = coffees.filter(c => c.id !== coffeeId);
-      setCoffees(updatedCoffees);
-      saveCoffees(updatedCoffees);
+      try {
+        await deleteCoffee(coffeeId);
+        setCoffees(current => current.filter(coffee => coffee.id !== coffeeId));
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : 'Unable to delete this menu item.');
+      }
     }
   };
 
@@ -82,6 +96,8 @@ const MenuManagement: React.FC = () => {
       ingredients: [],
       customizable: true,
     });
+    setImageFile(null);
+    setLoadError('');
     setEditingCoffee(null);
     setShowForm(false);
   };
@@ -99,16 +115,14 @@ const MenuManagement: React.FC = () => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, image: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+      setImageFile(file);
+      setFormData(prev => ({ ...prev, image: URL.createObjectURL(file) }));
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="admin-page space-y-6">
+      {loadError && <p role="alert" className="text-red-700">{loadError}</p>}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-amber-900 font-serif mb-2">Menu Management</h1>

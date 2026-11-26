@@ -1,7 +1,8 @@
-import React from 'react';
-import { Coffee, LogOut, ShoppingCart, User, Settings, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { Coffee, LogOut, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import './AppTheme.css';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,171 +13,92 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) => {
   const { user, logout } = useAuth();
   const { getTotalItems } = useCart();
+  const [logoutError, setLogoutError] = useState('');
+  const navigation = user?.role === 'admin'
+    ? [
+      { view: 'admin-dashboard', label: 'Dashboard' },
+      { view: 'menu-management', label: 'Menu' },
+      { view: 'inventory', label: 'Inventory' },
+      { view: 'orders', label: 'Orders' },
+      { view: 'users', label: 'Customers' },
+    ]
+    : [
+      { view: 'menu', label: 'Menu' },
+      { view: 'orders', label: 'My orders' },
+      { view: 'profile', label: 'Profile' },
+    ];
+
+  const handleLogout = async () => {
+    setLogoutError('');
+    try {
+      await logout();
+    } catch (error) {
+      setLogoutError(error instanceof Error ? error.message : 'Unable to sign out.');
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-amber-900 via-amber-800 to-orange-800 text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="container mx-auto px-4 py-6 relative z-10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Coffee className="h-10 w-10 text-amber-300 drop-shadow-lg" />
-                <Sparkles className="h-4 w-4 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold font-serif tracking-wide">mia.kape</h1>
-                <p className="text-sm text-amber-200 font-medium">Premium Coffee Experience • Philippines</p>
-              </div>
+    <div className="app-shell">
+      <header className="app-header">
+        <div className="app-header-inner">
+          <a className="app-brand" href="/" aria-label="mia.kape home">
+            <span className="app-brand-mark"><Coffee size={19} aria-hidden="true" /></span>
+            <span>mia.kape</span>
+          </a>
+          <div className="app-account">
+            <div className="app-welcome">
+              <span>{user?.role === 'admin' ? 'Shop dashboard' : 'Welcome back'}</span>
+              <strong>{user?.name}</strong>
             </div>
-            
-            <div className="flex items-center space-x-6">
-              <div className="text-right">
-                <p className="text-sm text-amber-200">Welcome back,</p>
-                <p className="font-semibold text-lg">{user?.name}</p>
-              </div>
-              <div className="flex items-center space-x-3">
-                {user?.role === 'user' && (
-                  <button
-                    onClick={() => onViewChange('cart')}
-                    className="relative p-3 bg-amber-600/80 hover:bg-amber-700 rounded-xl transition-all duration-200 transform hover:scale-105 backdrop-blur-sm"
-                  >
-                    <ShoppingCart className="h-6 w-6" />
-                    {getTotalItems() > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold animate-pulse">
-                        {getTotalItems()}
-                      </span>
-                    )}
-                  </button>
-                )}
+            <div className="app-header-actions">
+              {user?.role === 'user' && (
                 <button
-                  onClick={logout}
-                  className="p-3 bg-red-600/80 hover:bg-red-700 rounded-xl transition-all duration-200 transform hover:scale-105 backdrop-blur-sm"
+                  type="button"
+                  onClick={() => onViewChange('cart')}
+                  className="app-icon-button app-cart-button"
+                  aria-label={`Shopping cart, ${getTotalItems()} items`}
                 >
-                  <LogOut className="h-6 w-6" />
+                  <ShoppingCart size={19} aria-hidden="true" />
+                  {getTotalItems() > 0 && <span className="app-cart-count">{getTotalItems()}</span>}
                 </button>
-              </div>
+              )}
+              <button type="button" onClick={handleLogout} className="app-logout" aria-label="Sign out">
+                <LogOut size={16} aria-hidden="true" />
+                <span>Sign out</span>
+              </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Navigation */}
-      <nav className="bg-gradient-to-r from-amber-800 to-orange-700 text-white shadow-lg">
-        <div className="container mx-auto px-4">
-          <div className="flex space-x-1 overflow-x-auto">
-            {user?.role === 'admin' ? (
-              <>
-                <button
-                  onClick={() => onViewChange('admin-dashboard')}
-                  className={`px-6 py-4 font-semibold transition-all duration-200 whitespace-nowrap ${
-                    currentView === 'admin-dashboard'
-                      ? 'bg-amber-700 text-white shadow-lg'
-                      : 'text-amber-200 hover:text-white hover:bg-amber-700/50'
-                  }`}
-                >
-                  Dashboard
-                </button>
-                <button
-                  onClick={() => onViewChange('menu-management')}
-                  className={`px-6 py-4 font-semibold transition-all duration-200 whitespace-nowrap ${
-                    currentView === 'menu-management'
-                      ? 'bg-amber-700 text-white shadow-lg'
-                      : 'text-amber-200 hover:text-white hover:bg-amber-700/50'
-                  }`}
-                >
-                  Menu Management
-                </button>
-                <button
-                  onClick={() => onViewChange('inventory')}
-                  className={`px-6 py-4 font-semibold transition-all duration-200 whitespace-nowrap ${
-                    currentView === 'inventory'
-                      ? 'bg-amber-700 text-white shadow-lg'
-                      : 'text-amber-200 hover:text-white hover:bg-amber-700/50'
-                  }`}
-                >
-                  Inventory
-                </button>
-                <button
-                  onClick={() => onViewChange('orders')}
-                  className={`px-6 py-4 font-semibold transition-all duration-200 whitespace-nowrap ${
-                    currentView === 'orders'
-                      ? 'bg-amber-700 text-white shadow-lg'
-                      : 'text-amber-200 hover:text-white hover:bg-amber-700/50'
-                  }`}
-                >
-                  Orders
-                </button>
-                <button
-                  onClick={() => onViewChange('users')}
-                  className={`px-6 py-4 font-semibold transition-all duration-200 whitespace-nowrap ${
-                    currentView === 'users'
-                      ? 'bg-amber-700 text-white shadow-lg'
-                      : 'text-amber-200 hover:text-white hover:bg-amber-700/50'
-                  }`}
-                >
-                  Users
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => onViewChange('menu')}
-                  className={`px-6 py-4 font-semibold transition-all duration-200 whitespace-nowrap ${
-                    currentView === 'menu'
-                      ? 'bg-amber-700 text-white shadow-lg'
-                      : 'text-amber-200 hover:text-white hover:bg-amber-700/50'
-                  }`}
-                >
-                  Menu
-                </button>
-                <button
-                  onClick={() => onViewChange('orders')}
-                  className={`px-6 py-4 font-semibold transition-all duration-200 whitespace-nowrap ${
-                    currentView === 'orders'
-                      ? 'bg-amber-700 text-white shadow-lg'
-                      : 'text-amber-200 hover:text-white hover:bg-amber-700/50'
-                  }`}
-                >
-                  My Orders
-                </button>
-                <button
-                  onClick={() => onViewChange('profile')}
-                  className={`px-6 py-4 font-semibold transition-all duration-200 whitespace-nowrap ${
-                    currentView === 'profile'
-                      ? 'bg-amber-700 text-white shadow-lg'
-                      : 'text-amber-200 hover:text-white hover:bg-amber-700/50'
-                  }`}
-                >
-                  Profile
-                </button>
-              </>
-            )}
-          </div>
+      <nav className="app-nav" aria-label="Main navigation">
+        <div className="app-nav-inner">
+          {navigation.map(item => (
+            <button
+              type="button"
+              key={item.view}
+              onClick={() => onViewChange(item.view)}
+              className={`app-nav-link${currentView === item.view ? ' is-active' : ''}`}
+              aria-current={currentView === item.view ? 'page' : undefined}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       </nav>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="app-main">
+        {logoutError && <p role="alert" className="mb-4 text-sm text-red-700">{logoutError}</p>}
         {children}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-gradient-to-r from-amber-900 via-amber-800 to-orange-800 text-white py-12 mt-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <div className="flex items-center justify-center space-x-3 mb-6">
-              <div className="relative">
-                <Coffee className="h-8 w-8 text-amber-300" />
-                <Sparkles className="h-3 w-3 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
-              </div>
-              <span className="text-2xl font-serif font-bold">mia.kape</span>
-            </div>
-            <p className="text-amber-200 mb-4">© 2025 mia.kape Philippines. Crafted with love and premium coffee beans.</p>
-            <p className="text-amber-300 text-sm">Serving the finest coffee experience across the Philippines</p>
-          </div>
-        </div>
+      <footer className="app-footer">
+        <a className="app-brand app-footer-brand" href="/" aria-label="mia.kape home">
+          <span className="app-brand-mark"><Coffee size={17} aria-hidden="true" /></span>
+          <span>mia.kape</span>
+        </a>
+        <p>Good coffee. Good company. See you soon.</p>
+        <span className="app-footer-tagline">Made with care in the Philippines</span>
       </footer>
     </div>
   );

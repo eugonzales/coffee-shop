@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { User, Mail, Heart, Edit2, Save, X, MapPin, Phone } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getCoffees } from '../../utils/localStorage';
+import { getCoffees } from '../../services/shopData';
+import { Coffee } from '../../types';
 import { validateEmail } from '../../utils/validation';
+
+const LocationPicker = React.lazy(() => import('./LocationPicker'));
 
 const Profile: React.FC = () => {
   const { user, updateUser } = useAuth();
@@ -13,12 +16,24 @@ const Profile: React.FC = () => {
     address: user?.address || '',
     phone: user?.phone || '',
   });
+  const [location, setLocation] = useState(user?.location ?? null);
   const [errors, setErrors] = useState<string[]>([]);
+  const [notice, setNotice] = useState('');
+  const [coffees, setCoffees] = useState<Coffee[]>([]);
 
-  const coffees = getCoffees();
+  useEffect(() => {
+    let active = true;
+    getCoffees()
+      .then(menu => { if (active) setCoffees(menu); })
+      .catch(error => {
+        if (active) setErrors([error instanceof Error ? error.message : 'Unable to load menu favorites.']);
+      });
+    return () => { active = false; };
+  }, []);
+
   const favoriteItems = coffees.filter(coffee => user?.favoriteItems.includes(coffee.id));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!user) return;
 
     const validationErrors: string[] = [];
@@ -36,16 +51,23 @@ const Profile: React.FC = () => {
       return;
     }
 
-    updateUser({
-      ...user,
-      name: formData.name,
-      email: formData.email,
-      address: formData.address,
-      phone: formData.phone,
-    });
-    
-    setIsEditing(false);
-    setErrors([]);
+    try {
+      await updateUser({
+        ...user,
+        name: formData.name,
+        email: formData.email,
+        address: formData.address,
+        phone: formData.phone,
+        location,
+      });
+      setIsEditing(false);
+      setErrors([]);
+      setNotice(formData.email !== user.email
+        ? 'Check your new email address to confirm the change.'
+        : 'Profile updated.');
+    } catch (error) {
+      setErrors([error instanceof Error ? error.message : 'Unable to save profile changes.']);
+    }
   };
 
   const handleCancel = () => {
@@ -55,21 +77,9 @@ const Profile: React.FC = () => {
       address: user?.address || '',
       phone: user?.phone || '',
     });
+    setLocation(user?.location ?? null);
     setIsEditing(false);
     setErrors([]);
-  };
-
-  const toggleFavorite = (coffeeId: string) => {
-    if (!user) return;
-
-    const updatedFavorites = user.favoriteItems.includes(coffeeId)
-      ? user.favoriteItems.filter(id => id !== coffeeId)
-      : [...user.favoriteItems, coffeeId];
-
-    updateUser({
-      ...user,
-      favoriteItems: updatedFavorites,
-    });
   };
 
   return (
@@ -113,6 +123,8 @@ const Profile: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {notice && <p role="status" className="text-sm text-green-800">{notice}</p>}
 
             <div className="space-y-6">
               <div>
@@ -178,17 +190,34 @@ const Profile: React.FC = () => {
                   Delivery Address
                 </label>
                 {isEditing ? (
-                  <textarea
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full p-4 border-2 border-amber-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none"
-                    rows={3}
-                    placeholder="Enter your complete address for delivery orders"
-                  />
+                  <div className="space-y-4">
+                    <textarea
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      className="w-full p-4 border-2 border-amber-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none"
+                      rows={3}
+                      placeholder="Enter your complete address for delivery orders"
+                    />
+                    <React.Suspense fallback={<p className="text-sm text-stone-600">Loading map…</p>}>
+                      <LocationPicker value={location} onChange={setLocation} />
+                    </React.Suspense>
+                  </div>
                 ) : (
                   <div className="flex items-start space-x-3 p-4 bg-amber-50 rounded-xl">
                     <MapPin className="h-6 w-6 text-amber-600 mt-1" />
-                    <span className="text-amber-900 font-medium">{user?.address || 'Not provided'}</span>
+                    <div className="space-y-1">
+                      <span className="block text-amber-900 font-medium">{user?.address || 'Not provided'}</span>
+                      {user?.location && (
+                        <a
+                          className="inline-block text-sm font-semibold text-amber-800 underline underline-offset-2"
+                          href={`https://www.openstreetmap.org/?mlat=${user.location.latitude}&mlon=${user.location.longitude}#map=16/${user.location.latitude}/${user.location.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          View pinned location
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

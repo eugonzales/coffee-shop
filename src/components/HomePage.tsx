@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowRight, ArrowUpRight, Clock3, Coffee, MapPin } from 'lucide-react';
-import { Coffee as CoffeeItem, Ingredient } from '../types';
-import { getCoffees, getIngredients } from '../utils/localStorage';
+import { Coffee as CoffeeItem, IngredientOption } from '../types';
+import { getCoffees, getIngredientOptions } from '../services/shopData';
 import './HomePage.css';
 
 interface HomePageProps {
@@ -21,21 +21,31 @@ const SHOP_INFO = {
 };
 
 const MENU_PHOTOS: Record<string, string> = {
-  Espresso: '/images/espresoo.jpg',
+  Espresso: '/images/nathan-dumlao-nBJHO6wmRWw-unsplash.jpg',
   Coffee: '/images/spec.jpg',
-  Specialty: '/images/latte.jpg',
+  Specialty: '/images/nameless-3791-5nYLHK68TLM-unsplash.jpg',
   Latte: '/images/espresoo.jpg',
-  'Cold Brew': '/images/coffee.jpg',
+  'Cold Brew': '/images/jarek-ceborski-IhqDpFz7I8Q-unsplash.jpg',
 };
 
 const HomePage: React.FC<HomePageProps> = ({ onOrder }) => {
   const [coffees, setCoffees] = useState<CoffeeItem[]>([]);
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [ingredients, setIngredients] = useState<IngredientOption[]>([]);
   const [activeCategory, setActiveCategory] = useState('All');
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    setCoffees(getCoffees());
-    setIngredients(getIngredients());
+    let active = true;
+    Promise.all([getCoffees(), getIngredientOptions()])
+      .then(([menu, availableIngredients]) => {
+        if (!active) return;
+        setCoffees(menu);
+        setIngredients(availableIngredients);
+      })
+      .catch(error => {
+        if (active) setLoadError(error instanceof Error ? error.message : 'Unable to load the menu.');
+      });
+    return () => { active = false; };
   }, []);
 
   const categories = useMemo(
@@ -194,7 +204,9 @@ const HomePage: React.FC<HomePageProps> = ({ onOrder }) => {
               ))}
             </div>
           ) : (
-            <p className="home-menu-empty">Our menu is being prepared. Please check back soon.</p>
+            <p className="home-menu-empty" role={loadError ? 'alert' : undefined}>
+              {loadError || 'Our menu is being prepared. Please check back soon.'}
+            </p>
           )}
           <div className="home-menu-bottom">
             <p>See something you love? Get it ready before you arrive.</p>

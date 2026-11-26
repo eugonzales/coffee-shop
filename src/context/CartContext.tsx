@@ -27,12 +27,7 @@ interface CartProviderProps {
 }
 
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
-  const [items, setItems] = useState<CartItem[]>([]);
-
-  useEffect(() => {
-    const savedCart = getCart();
-    setItems(savedCart);
-  }, []);
+  const [items, setItems] = useState<CartItem[]>(() => getCart());
 
   useEffect(() => {
     saveCart(items);
